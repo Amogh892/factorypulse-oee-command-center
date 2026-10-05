@@ -1,0 +1,94 @@
+-- FactoryPulse on Snowflake: base tables for the converged IT/OT model.
+-- Load the CSVs produced by scripts/run_pipeline.py (data/*.csv) into these tables, e.g. with
+--   snow stage copy data/ @factorypulse_stage  then  COPY INTO ... FROM @factorypulse_stage/<table>.csv
+
+CREATE DATABASE IF NOT EXISTS FACTORYPULSE;
+CREATE SCHEMA IF NOT EXISTS FACTORYPULSE.OPS;
+USE SCHEMA FACTORYPULSE.OPS;
+
+CREATE OR REPLACE TABLE ASSETS (
+    ASSET_ID        STRING PRIMARY KEY,
+    ASSET_NAME      STRING,
+    ASSET_TYPE      STRING,
+    LINE_ID         STRING,
+    PLANT_ID        STRING,
+    CRITICALITY     STRING,
+    IDEAL_CYCLE_SEC NUMBER(8,2),
+    INSTALL_DATE    DATE,
+    MANUFACTURER    STRING
+);
+
+-- OT: raw sensor stream (landing table; a Snowpipe Streaming / Kafka connector would write here)
+CREATE OR REPLACE TABLE SENSOR_READINGS (
+    TS              TIMESTAMP_NTZ,
+    ASSET_ID        STRING,
+    VIBRATION_MM_S  NUMBER(8,3),
+    TEMPERATURE_C   NUMBER(8,2),
+    RPM             NUMBER(8,1),
+    MACHINE_STATUS  STRING
+) CLUSTER BY (ASSET_ID, TS);
+
+-- IT: ERP production orders per shift
+CREATE OR REPLACE TABLE PRODUCTION_ORDERS (
+    ORDER_ID                   STRING PRIMARY KEY,
+    ASSET_ID                   STRING,
+    SHIFT_DATE                 DATE,
+    SHIFT                      STRING,
+    PRODUCT_CODE               STRING,
+    PLANNED_MINUTES            NUMBER,
+    UNPLANNED_DOWNTIME_MINUTES NUMBER,
+    RUN_MINUTES                NUMBER,
+    PLANNED_QTY                NUMBER,
+    TOTAL_COUNT                NUMBER,
+    GOOD_COUNT                 NUMBER,
+    SCRAP_COUNT                NUMBER
+);
+
+-- IT: CMMS / ERP maintenance work orders (free-text NOTES are used by the RCA agent)
+CREATE OR REPLACE TABLE WORK_ORDERS (
+    WO_ID       STRING PRIMARY KEY,
+    ASSET_ID    STRING,
+    WO_TYPE     STRING,      -- CORRECTIVE | PREVENTIVE | PREDICTIVE
+    STATUS      STRING,      -- OPEN | IN_PROGRESS | CLOSED
+    PRIORITY    STRING,
+    CREATED_TS  TIMESTAMP_NTZ,
+    CLOSED_TS   TIMESTAMP_NTZ,
+    TITLE       STRING,
+    NOTES       STRING,
+    PARTS       STRING,
+    COST_EUR    NUMBER(10,2),
+    TECHNICIAN  STRING,
+    SOURCE      STRING,      -- ERP_HISTORY | AUTO_PREDICTIVE | MANUAL
+    ALERT_ID    NUMBER
+);
+
+CREATE OR REPLACE TABLE FAILURE_EVENTS (
+    ASSET_ID         STRING,
+    FAILURE_TS       TIMESTAMP_NTZ,
+    FAILURE_MODE     STRING,
+    DOWNTIME_MINUTES NUMBER,
+    RESTORED_TS      TIMESTAMP_NTZ,
+    OBSERVED         NUMBER(1)
+);
+
+CREATE OR REPLACE TABLE ALERTS (
+    ALERT_ID      NUMBER AUTOINCREMENT PRIMARY KEY,
+    ASSET_ID      STRING,
+    ALERT_TYPE    STRING,
+    SEVERITY      STRING,
+    RISK_SCORE    FLOAT,
+    MESSAGE       STRING,
+    STATUS        STRING DEFAULT 'OPEN',
+    CREATED_TS    TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    UPDATED_TS    TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    WORK_ORDER_ID STRING
+);
+
+CREATE OR REPLACE TABLE RISK_SCORES (
+    ASSET_ID    STRING,
+    TS          TIMESTAMP_NTZ,
+    RISK_SCORE  FLOAT,
+    TOP_DRIVERS VARIANT
+);
+
+CREATE OR REPLACE STAGE FACTORYPULSE_STAGE FILE_FORMAT = (TYPE = CSV SKIP_HEADER = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '"');

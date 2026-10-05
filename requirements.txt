@@ -1,0 +1,10 @@
+streamlit>=1.40
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+plotly>=5.22
+python-dotenv>=1.0
+pytest>=8.0
+# llama-cpp-python: install from the prebuilt CPU wheel index (see RUNNING.md)
+# pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+llama-cpp-python>=0.3.0

@@ -1,0 +1,109 @@
+# Cortex Analyst semantic model for FactoryPulse.
+# Gives natural-language access (Snowsight agent / Slackbot) to the same converged IT/OT model
+# that src/factorypulse/nlq.py exposes locally. Verified queries mirror nlq.VERIFIED_QUERIES.
+name: factorypulse
+description: Converged IT (ERP production, CMMS work orders) and OT (sensor) data for predictive maintenance and OEE.
+
+tables:
+  - name: assets
+    base_table: { database: FACTORYPULSE, schema: OPS, table: ASSETS }
+    primary_key: { columns: [ASSET_ID] }
+    dimensions:
+      - { name: asset_id, expr: ASSET_ID, data_type: string, synonyms: [machine, equipment] }
+      - { name: asset_name, expr: ASSET_NAME, data_type: string }
+      - { name: asset_type, expr: ASSET_TYPE, data_type: string, sample_values: [CNC_MILL, PRESS, CONVEYOR, PUMP] }
+      - { name: line_id, expr: LINE_ID, data_type: string, synonyms: [production line, line] }
+      - { name: criticality, expr: CRITICALITY, data_type: string }
+
+  - name: oee_daily
+    base_table: { database: FACTORYPULSE, schema: OPS, table: OEE_DAILY }
+    time_dimensions:
+      - { name: shift_date, expr: SHIFT_DATE, data_type: date }
+    dimensions:
+      - { name: asset_id, expr: ASSET_ID, data_type: string }
+      - { name: line_id, expr: LINE_ID, data_type: string }
+    measures:
+      - { name: planned_minutes, expr: PLANNED_MINUTES, data_type: number, default_aggregation: sum }
+      - { name: run_minutes, expr: RUN_MINUTES, data_type: number, default_aggregation: sum }
+      - { name: unplanned_downtime_minutes, expr: UNPLANNED_DOWNTIME_MINUTES, data_type: number, default_aggregation: sum, synonyms: [downtime, lost time] }
+      - { name: total_count, expr: TOTAL_COUNT, data_type: number, default_aggregation: sum }
+      - { name: good_count, expr: GOOD_COUNT, data_type: number, default_aggregation: sum }
+      - { name: scrap_count, expr: SCRAP_COUNT, data_type: number, default_aggregation: sum, synonyms: [rejects, defects] }
+      - { name: oee, expr: OEE, data_type: number, default_aggregation: avg, synonyms: [overall equipment effectiveness] }
+      - { name: availability, expr: AVAILABILITY, data_type: number, default_aggregation: avg }
+      - { name: performance, expr: PERFORMANCE, data_type: number, default_aggregation: avg }
+      - { name: quality, expr: QUALITY, data_type: number, default_aggregation: avg }
+
+  - name: risk_scores
+    base_table: { database: FACTORYPULSE, schema: OPS, table: RISK_SCORES }
+    time_dimensions:
+      - { name: ts, expr: TS, data_type: timestamp }
+    dimensions:
+      - { name: asset_id, expr: ASSET_ID, data_type: string }
+    measures:
+      - { name: risk_score, expr: RISK_SCORE, data_type: number, default_aggregation: max, synonyms: [failure probability, failure risk] }
+
+  - name: work_orders
+    base_table: { database: FACTORYPULSE, schema: OPS, table: WORK_ORDERS }
+    time_dimensions:
+      - { name: created_ts, expr: CREATED_TS, data_type: timestamp }
+    dimensions:
+      - { name: wo_id, expr: WO_ID, data_type: string }
+      - { name: asset_id, expr: ASSET_ID, data_type: string }
+      - { name: wo_type, expr: WO_TYPE, data_type: string, sample_values: [CORRECTIVE, PREVENTIVE, PREDICTIVE] }
+      - { name: status, expr: STATUS, data_type: string }
+      - { name: source, expr: SOURCE, data_type: string }
+      - { name: notes, expr: NOTES, data_type: string, description: free-text technician findings }
+    measures:
+      - { name: cost_eur, expr: COST_EUR, data_type: number, default_aggregation: sum, synonyms: [maintenance cost, spend] }
+      - { name: work_order_count, expr: WO_ID, data_type: number, default_aggregation: count }
+
+  - name: failure_events
+    base_table: { database: FACTORYPULSE, schema: OPS, table: FAILURE_EVENTS }
+    time_dimensions:
+      - { name: failure_ts, expr: FAILURE_TS, data_type: timestamp }
+    dimensions:
+      - { name: asset_id, expr: ASSET_ID, data_type: string }
+      - { name: failure_mode, expr: FAILURE_MODE, data_type: string, sample_values: [BEARING_WEAR, OVERHEATING, MISALIGNMENT, LUBRICATION] }
+    filters:
+      - { name: observed_only, expr: OBSERVED = 1, description: exclude scheduled/future scenario failures }
+    measures:
+      - { name: downtime_minutes, expr: DOWNTIME_MINUTES, data_type: number, default_aggregation: sum }
+      - { name: failure_count, expr: ASSET_ID, data_type: number, default_aggregation: count }
+
+relationships:
+  - { name: oee_asset, left_table: oee_daily, right_table: assets, join_type: left_outer, relationship_type: many_to_one, relationship_columns: [{ left_column: ASSET_ID, right_column: ASSET_ID }] }
+  - { name: risk_asset, left_table: risk_scores, right_table: assets, join_type: left_outer, relationship_type: many_to_one, relationship_columns: [{ left_column: ASSET_ID, right_column: ASSET_ID }] }
+  - { name: wo_asset, left_table: work_orders, right_table: assets, join_type: left_outer, relationship_type: many_to_one, relationship_columns: [{ left_column: ASSET_ID, right_column: ASSET_ID }] }
+  - { name: fail_asset, left_table: failure_events, right_table: assets, join_type: left_outer, relationship_type: many_to_one, relationship_columns: [{ left_column: ASSET_ID, right_column: ASSET_ID }] }
+
+verified_queries:
+  - name: assets ranked by current failure risk
+    question: Which assets are most likely to fail?
+    sql: |
+      SELECT r.ASSET_ID, a.ASSET_NAME, r.RISK_SCORE
+      FROM FACTORYPULSE.OPS.RISK_SCORES r JOIN FACTORYPULSE.OPS.ASSETS a USING (ASSET_ID)
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY r.ASSET_ID ORDER BY r.TS DESC) = 1
+      ORDER BY r.RISK_SCORE DESC
+  - name: OEE by asset last 7 days
+    question: Show OEE by asset for the last 7 days
+    sql: |
+      SELECT ASSET_ID,
+             SUM(RUN_MINUTES)/SUM(PLANNED_MINUTES) AS AVAILABILITY,
+             SUM(GOOD_COUNT)/SUM(TOTAL_COUNT) AS QUALITY,
+             AVG(OEE) AS OEE
+      FROM FACTORYPULSE.OPS.OEE_DAILY
+      WHERE SHIFT_DATE >= DATEADD('day', -7, CURRENT_DATE())
+      GROUP BY ASSET_ID ORDER BY OEE
+  - name: unplanned downtime by asset
+    question: Which asset had the most unplanned downtime?
+    sql: |
+      SELECT ASSET_ID, COUNT(*) AS FAILURES, SUM(DOWNTIME_MINUTES) AS DOWNTIME_MINUTES
+      FROM FACTORYPULSE.OPS.FAILURE_EVENTS WHERE OBSERVED = 1
+      GROUP BY ASSET_ID ORDER BY DOWNTIME_MINUTES DESC
+  - name: failure modes
+    question: What are the most common failure modes?
+    sql: |
+      SELECT FAILURE_MODE, COUNT(*) AS N, AVG(DOWNTIME_MINUTES) AS AVG_DOWNTIME
+      FROM FACTORYPULSE.OPS.FAILURE_EVENTS WHERE OBSERVED = 1
+      GROUP BY FAILURE_MODE ORDER BY N DESC
