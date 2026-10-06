@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FactoryPulse Demo</title>
+<meta name="description" content="Predictive Maintenance and OEE Command Center: demo video, submission deck and source code.">
+<style>
+  :root { --bg:#ffffff; --fg:#0b1f3a; --muted:#5b6472; --accent:#1565d8; --card:#eaf1fd; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#0b1220; --fg:#e8eefc; --muted:#9aa6bd; --accent:#5aa2ff; --card:#152238; }
+  }
+  :root[data-theme="dark"] { --bg:#0b1220; --fg:#e8eefc; --muted:#9aa6bd; --accent:#5aa2ff; --card:#152238; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 Arial, Helvetica, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  video { width: 100%; max-height: 70vh; background: #000; border-radius: 12px; }
+  .row { display:flex; flex-wrap:wrap; gap:12px; margin: 20px 0 28px; }
+  a.btn { display:inline-block; padding:10px 16px; border-radius:10px; background:var(--accent); color:#fff; text-decoration:none; font-weight:bold; }
+  a.btn.alt { background:var(--card); color:var(--fg); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+  .card { background:var(--card); border-radius:12px; padding:14px 16px; }
+  .card b { display:block; margin-bottom:4px; }
+  footer { color:var(--muted); font-size: 0.9rem; margin-top: 32px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FactoryPulse: Predictive Maintenance &amp; OEE Command Center</h1>
+  <p class="sub">Team ICE · CoCo CLI Hackathon (GCC Edition) · converges OT sensor streams with ERP and CMMS context to predict failures, auto-create work orders and lift OEE.</p>
+
+  <video controls preload="metadata" poster="">
+    <source src="https://github.com/Amogh892/factorypulse-oee-command-center/releases/download/v1.0.0/FactoryPulse-demo.mp4" type="video/mp4">
+    Your browser cannot play this video. <a href="https://github.com/Amogh892/factorypulse-oee-command-center/releases/download/v1.0.0/FactoryPulse-demo.mp4">Download the demo recording</a>.
+  </video>
+
+  <div class="row">
+    <a class="btn" href="https://github.com/Amogh892/factorypulse-oee-command-center">Source code on GitHub</a>
+    <a class="btn alt" href="https://github.com/Amogh892/factorypulse-oee-command-center/releases/tag/v1.0.0">Release: demo video + submission deck</a>
+    <a class="btn alt" href="https://github.com/Amogh892/factorypulse-oee-command-center/blob/main/RUNNING.md">How to run it</a>
+  </div>
+
+  <div class="grid">
+    <div class="card"><b>Predict</b>Gradient-boosting model on hourly OT features plus maintenance context: probability of failure in the next 24 h, with the drivers behind each score.</div>
+    <div class="card"><b>Act</b>CRITICAL alerts open a P1 work order automatically, with guardrails: dedupe, one open work order per asset, auto-resolve, rule-based sensor limits.</div>
+    <div class="card"><b>Explain</b>Root cause in natural language from a grounded evidence pack (local IBM Granite 4.0 1B), plus verified queries and guarded text-to-SQL.</div>
+    <div class="card"><b>Measure</b>OEE (Availability × Performance × Quality) per asset, line and plant, computed from ERP production orders and linked to the physical cause.</div>
+  </div>
+
+  <footer>The live Streamlit app runs server-side Python and therefore cannot be hosted on GitHub Pages; see RUNNING.md for the Streamlit Community Cloud deployment.</footer>
+</main>
+</body>
+</html>

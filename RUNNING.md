@@ -119,7 +119,26 @@ python -c "import sys;sys.path.insert(0,'src');from factorypulse import nlq,llm;
 6. Create a Cortex Analyst semantic view from `snowflake/semantic_model.yaml` and attach it to a Snowsight agent
    or the Slackbot.
 
-## 9. Troubleshooting
+## 9. Hosting a shareable version
+
+**Demo video and deck** are attached to the GitHub release
+https://github.com/Amogh892/factorypulse-oee-command-center/releases/tag/v1.0.0 and embedded on the project
+page served by GitHub Pages from `docs/index.html`.
+
+**The Streamlit app cannot run on GitHub Pages** (Pages serves static files only; Streamlit needs a Python
+server). Use Streamlit Community Cloud, which is free and deploys straight from this repo:
+
+1. Go to https://share.streamlit.io, sign in with the GitHub account that owns the repo, and click *Create app*.
+2. Repository `Amogh892/factorypulse-oee-command-center`, branch `main`, main file `app/command_center.py`.
+3. Deploy. On first load the app generates the synthetic data, trains and scores the model itself (~30 s),
+   so no pipeline run or database upload is needed.
+
+On the cloud the local Granite model is not available (no GGUF, no `llama-cpp-python`), so root-cause analysis
+uses the rule-based narrative and questions are answered by verified queries. The source badge in the UI shows
+which path answered. Everything else (prediction, alerts, work orders, OEE, triage actions) works unchanged.
+Note that Community Cloud containers are ephemeral: triage actions persist until the app restarts.
+
+## 10. Troubleshooting
 
 | Symptom | Fix |
 |---|---|

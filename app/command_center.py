@@ -104,6 +104,21 @@ def show_drivers(top_drivers: str | None):
                  hide_index=True, width="stretch")
 
 
+def bootstrap_data() -> None:
+    """First run on a fresh host (e.g. Streamlit Community Cloud): generate data, train and score in-process."""
+    from factorypulse import synth
+    with db.session() as conn:
+        frames = synth.generate()
+        db.write_frames(conn, frames)
+        conn.execute("DELETE FROM alerts"); conn.execute("DELETE FROM risk_scores")
+        feats = features.build_features(conn)
+        model.train(conn, feats)
+        latest = model.score(conn, feats)
+        oee.compute_oee(conn)
+        alerts.generate_alerts(conn, latest)
+        db.log_run(conn, "bootstrap", "OK", "generated, trained and scored from the app", 0.0)
+
+
 def run_rescore(auto_wo: bool = True) -> dict:
     with db.session() as conn:
         feats = features.build_features(conn)
@@ -353,8 +368,9 @@ def main():
     st.sidebar.title("FactoryPulse")
     st.sidebar.caption("IT + OT converged · local Granite 4.0 1B · SQLite stand-in for Snowflake")
     if not db_ready():
-        st.error("No data yet. Run `python scripts/run_pipeline.py` first (see RUNNING.md).")
-        return
+        with st.spinner("First run: generating 30 days of synthetic IT/OT data, training and scoring the failure model (~30 s)..."):
+            bootstrap_data()
+        st.rerun()
     page = st.sidebar.radio("Navigate", list(PAGES))
     st.sidebar.divider()
     r = latest_risk_df()

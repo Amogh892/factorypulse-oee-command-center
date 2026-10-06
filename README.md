@@ -4,6 +4,8 @@
 > open work orders automatically, explain root causes in natural language, and lift OEE** — all runnable on a
 > laptop with a local **IBM Granite 4.0 1B** model, with a one-to-one **Snowflake** twin for the cloud.
 
+**Links:** [Demo video and submission deck (GitHub release v1.0.0)](https://github.com/Amogh892/factorypulse-oee-command-center/releases/tag/v1.0.0) · [Project page with the embedded demo](https://amogh892.github.io/factorypulse-oee-command-center/) · deploy the live app with Streamlit Community Cloud (see RUNNING.md, section 9).
+
 See [RUNNING.md](RUNNING.md) for setup and run instructions. This file explains *what* the solution is and *why*.
 
 ---
