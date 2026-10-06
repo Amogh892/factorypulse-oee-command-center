@@ -32,7 +32,7 @@ GREEN = RGBColor(0x1E, 0x9E, 0x6A)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 FONT = "Arial"
 
-TEAM = dict(name="<Team name>", leader="<Team leader name>", size="<N>",
+TEAM = dict(name="ICE", leader="Amogh Kotha Nagaraj", size="<N>",
             problem="Predictive Maintenance and OEE Command Center")
 
 
